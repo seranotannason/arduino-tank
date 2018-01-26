@@ -44,11 +44,19 @@ def callback(data):
     rospy.loginfo(rospy.get_caller_id() + 'I heard ' + str(data.data))
     # example of cmd = "+255"
     num = data.data
+    # Note: the operators have been reversed
+    # to allow intuitive movement of robot
     if num < 0:
-        cmd = "-"
-    else:
         cmd = "+"
-    cmd = str(abs(num))
+    else:
+        cmd = "-"
+    num = abs(num)
+    if num < 10:
+        cmd += "00" + str(num)
+    elif num < 100:
+        cmd += "0" + str(num)
+    else:
+        cmd += str(num)
     ser.write(cmd.encode('utf-8'))
 
 def listener():

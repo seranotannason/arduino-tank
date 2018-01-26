@@ -43,23 +43,41 @@ from sensor_msgs.msg import Joy
 # This test function publishes random integers based on the current time
 
 def callback(data):
-    forward_value = int(data.axes[1] * 255)
-    rotate_value = int(data.axes[2] * 255)
-    rospy.loginfo('Forward value: %s', forward_value)
-    rospy.loginfo('Rotate value: %s', rotate_value)
-    pub.publish(forward_value)
-    pub.publish(rotate_value)
-    rate.sleep()
+    # We manipulate forward_value and rotate_value
+    # to produce leftMotor and rightMotor values
+    global left_motor
+    global right_motor
 
+    forward_value = int(data.axes[1] * 255)
+    rotate_ratio = 1 - abs(data.axes[2])
+    rospy.loginfo('rotate ratio: %s', rotate_ratio)
+    if data.axes[2] > 0:
+        # steer left, i.e. left_motor < right_motor
+        right_motor = forward_value
+        left_motor = right_motor * rotate_ratio
+    else:
+        # steer right, i.e. right_motor < left_motor
+        left_motor = forward_value
+        right_motor = left_motor * rotate_ratio
+    
+    rospy.loginfo('Left motor: %s', left_motor)
+    rospy.loginfo('Right motor: %s', right_motor)
+    
 def listen_talker():
+    rospy.init_node('joystick_talker', anonymous=True)
+    pub = rospy.Publisher('values', Int64, queue_size=10)
+    rate = rospy.Rate(5)
     rospy.Subscriber('joy', Joy, callback)
-    rospy.spin()
+    
+    while not rospy.is_shutdown():
+        pub.publish(left_motor)
+        pub.publish(right_motor)
+        rate.sleep()
 
 if __name__ == '__main__':
     try:
-        rospy.init_node('joystick_talker', anonymous=True)
-        pub = rospy.Publisher('values', Int64, queue_size=10)
-        rate = rospy.Rate(10)
+        left_motor = 0
+        right_motor = 0
         listen_talker() 
         # this node will listen to joystick
         # and publish to listener (computer on rover)
